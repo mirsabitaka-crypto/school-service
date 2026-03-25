@@ -3,101 +3,203 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SHADOW_NET // TERMINAL</title>
+    <title>SHADOW_OS // TERMINAL_V3</title>
     <style>
-        body {
-            background-color: #050505;
-            color: #00ff00;
-            font-family: 'Courier New', Courier, monospace;
-            margin: 0;
-            padding: 20px;
-            overflow-x: hidden;
+        /* --- МОЩНЫЕ СТИЛИ ДИЗАЙНА --- */
+        :root {
+            --primary: #00ff00;
+            --secondary: #003300;
+            --bg: #000a00;
+            --font: 'Courier New', Courier, monospace;
         }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            border: 1px solid #00ff00;
-            padding: 20px;
-            box-shadow: 0 0 10px #00ff0020;
+
+        * { box-sizing: border-box; cursor: crosshair; }
+        body, html {
+            height: 100%; margin: 0; padding: 0;
+            background-color: var(--bg);
+            color: var(--primary);
+            font-family: var(--font);
+            overflow: hidden;
         }
-        .header {
-            text-align: center;
-            font-size: 1.5em;
-            font-weight: bold;
-            text-shadow: 0 0 5px #00ff00;
-            margin-bottom: 20px;
-            border-bottom: 1px dashed #00ff00;
-            padding-bottom: 10px;
+
+        /* Матрица на заднем плане */
+        #matrix-canvas {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1; opacity: 0.2;
         }
-        .boot-sequence {
-            font-size: 0.9em;
-            opacity: 0.8;
-            margin-bottom: 20px;
+
+        /* Основной контейнер */
+        .main-wrapper {
+            position: relative; z-index: 10;
+            display: flex; flex-direction: column;
+            height: 100vh; padding: 15px;
         }
-        .boot-sequence p { margin: 2px 0; }
-        .services {
-            margin: 20px 0;
+
+        /* Помехи как на старом ТВ */
+        .scanline {
+            width: 100%; height: 100px; z-index: 11;
+            background: linear-gradient(0deg, rgba(0, 0, 0, 0) 0%, rgba(0, 255, 0, 0.1) 50%, rgba(0, 0, 0, 0) 100%);
+            opacity: 0.1; position: absolute; bottom: 100%;
+            animation: scanline 8s linear infinite;
+            pointer-events: none;
         }
-        .services p { margin: 10px 0; }
-        .btn {
-            display: block;
-            width: 100%;
-            background-color: #00ff00;
-            color: #000;
-            text-align: center;
-            padding: 15px 0;
-            text-decoration: none;
-            font-weight: bold;
-            font-size: 1.2em;
-            margin-top: 30px;
+        @keyframes scanline { 0% { bottom: 100%; } 100% { bottom: -100%; } }
+
+        .terminal-window {
+            flex-grow: 1; border: 1px solid var(--primary);
+            background: rgba(0, 5, 0, 0.9);
+            box-shadow: 0 0 25px var(--secondary);
+            display: flex; flex-direction: column;
+            overflow: hidden;
+        }
+
+        .window-header {
+            background: var(--primary); color: #000;
+            padding: 5px 15px; font-weight: bold;
+            display: flex; justify-content: space-between;
+            font-size: 0.8em; text-transform: uppercase;
+        }
+
+        /* Окно вывода текста */
+        #output {
+            flex-grow: 1; padding: 20px;
+            overflow-y: auto; font-size: 1em;
+        }
+        #output::-webkit-scrollbar { width: 4px; }
+        #output::-webkit-scrollbar-thumb { background: var(--primary); }
+
+        .line { margin-bottom: 10px; line-height: 1.5; }
+        .cmd-color { color: #fff; text-shadow: 0 0 8px var(--primary); }
+        .sys-info { color: #008800; font-size: 0.9em; }
+        .error { color: #ff0000; text-shadow: 0 0 5px #ff0000; }
+
+        /* Строка ввода */
+        .input-area {
+            display: flex; padding: 15px;
+            border-top: 1px solid var(--secondary);
+            background: #000;
+        }
+        .prompt { color: var(--primary); margin-right: 10px; font-weight: bold; }
+        #cmd-input {
+            background: transparent; border: none; color: var(--primary);
+            font-family: var(--font); font-size: 1em; width: 100%;
+            outline: none;
+        }
+
+        /* Плавающая кнопка связи */
+        .btn-tg {
+            position: fixed; bottom: 90px; right: 30px;
+            border: 2px solid var(--primary);
+            background: #000; color: var(--primary);
+            padding: 12px 20px; text-decoration: none;
+            font-weight: bold; z-index: 100;
+            box-shadow: 0 0 15px var(--secondary);
             text-transform: uppercase;
-            transition: 0.3s;
         }
-        .btn:active {
-            background-color: #000;
-            color: #00ff00;
-            border: 1px solid #00ff00;
+        .btn-tg:hover { background: var(--primary); color: #000; }
+
+        @media (max-width: 600px) {
+            #output { font-size: 0.85em; }
+            .btn-tg { bottom: 100px; right: 15px; font-size: 0.8em; }
         }
-        .cursor {
-            display: inline-block;
-            width: 10px;
-            height: 18px;
-            background: #00ff00;
-            animation: blink 1s step-end infinite;
-            vertical-align: middle;
-        }
-        @keyframes blink { 50% { opacity: 0; } }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            [ SCHOOL_NET_v1.0 ]
+
+<canvas id="matrix-canvas"></canvas>
+<div class="scanline"></div>
+
+<div class="main-wrapper">
+    <div class="terminal-window">
+        <div class="window-header">
+            <span>SHADOW_OS_KERNEL_V3.0</span>
+            <span>SECURE_CONNECTION: ACTIVE</span>
         </div>
         
-        <div class="boot-sequence">
-            <p>> * daemon not running; starting now at tcp:5037</p>
-            <p>> * daemon started successfully</p>
-            <p>> connected to local server</p>
-            <p>> overriding device density and resolution...</p>
-            <p>> connection established. user hidden.</p>
+        <div id="output">
+            <div class="line" style="color: #fff;">[ СИСТЕМА ИНИЦИАЛИЗИРОВАНА ]</div>
+            <div class="line sys-info">> Подгрузка модулей... OK</div>
+            <div class="line sys-info">> Проверка прав root... OK</div>
+            <div class="line">> Добро пожаловать в Shadow Net. Теперь это твой личный терминал.</div>
+            <div class="line">> Введи <span class="cmd-color">'help'</span> для списка доступных команд.</div>
         </div>
 
-        <div>
-            <p>> <b>ДОСТУПНЫЕ УСЛУГИ:</b></p>
-            <div class="services">
-                <p>[1] Решение домашки (до дедлайна)</p>
-                <p>[2] Слив ответов на контрольные</p>
-                <p>[3] Теневые поручения (любой каприз)</p>
-            </div>
+        <div class="input-area">
+            <span class="prompt">user@shadow:~#</span>
+            <input type="text" id="cmd-input" autofocus autocomplete="off">
         </div>
-
-        <p>> Оплата: Бесплатно (временно)</p>
-        <p>> Статус админа: ONLINE</p>
-
-        <a href="https://t.me/@murzahmedof" class="btn">СВЯЗАТЬСЯ С АДМИНОМ</a>
-        
-        <p style="margin-top: 20px;">> root@school-net:~# <span class="cursor"></span></p>
     </div>
+</div>
+
+<a href="https://t.me/murzahmedof" class="btn-tg">СВЯЗЬ С АДМИНОМ</a>
+
+<script>
+    /* --- ХАКЕРСКАЯ ЛОГИКА --- */
+    const canvas = document.getElementById('matrix-canvas');
+    const ctx = canvas.getContext('2d');
+    const input = document.getElementById('cmd-input');
+    const output = document.getElementById('output');
+
+    // 1. Настройка Матрицы
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789$#@%&*";
+    const fontSize = 16;
+    const columns = canvas.width / fontSize;
+    const drops = Array(Math.floor(columns)).fill(1);
+
+    function drawMatrix() {
+        ctx.fillStyle = "rgba(0, 10, 0, 0.05)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#0F0";
+        ctx.font = fontSize + "px monospace";
+        for (let i = 0; i < drops.length; i++) {
+            const text = alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+            ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+            if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+            drops[i]++;
+        }
+    }
+    setInterval(drawMatrix, 40);
+
+    // 2. Команды консоли
+    const data = {
+        'help': 'СПИСОК КОМАНД:<br>[services] - услуги сервиса<br>[status] - инфо о сервере<br>[whoami] - инфо о пользователе<br>[clear] - очистить экран<br>[exit] - выйти',
+        'services': '<b style="color:#fff;">НАШИ ВОЗМОЖНОСТИ:</b><br>- Решение ДЗ (страница/задача)<br>- Слив ответов на тесты<br>- Консультации по учебе<br>Для заказа жми на кнопку связи.',
+        'status': 'System: <span style="color:#0f0">ONLINE</span><br>Nodes: 12 active<br>Encryption: AES-256<br>Admin: mirsabitaka',
+        'whoami': 'User: Anonymous_Student<br>IP: 127.0.0.1 (Masked)<br>Rank: Newbie',
+        'exit': 'До свидания, агент...'
+    };
+
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            const val = input.value.toLowerCase().trim();
+            addBox(`user@shadow:~# ${val}`, 'cmd-color');
+            
+            if (val === 'clear') {
+                output.innerHTML = '';
+            } else if (data[val]) {
+                addBox(data[val]);
+            } else if (val !== '') {
+                addBox(`Ошибка: Команда '${val}' не распознана.`, 'error');
+            }
+            
+            input.value = '';
+            output.scrollTop = output.scrollHeight;
+        }
+    });
+
+    function addBox(text, className = '') {
+        const div = document.createElement('div');
+        div.className = 'line ' + className;
+        div.innerHTML = text;
+        output.appendChild(div);
+    }
+
+    // Всегда держать фокус на вводе
+    document.addEventListener('click', () => input.focus());
+</script>
+
 </body>
 </html>
